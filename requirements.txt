@@ -1,0 +1,29 @@
+# Core ML
+pandas==2.1.0
+numpy==1.24.3
+scikit-learn==1.3.0
+xgboost==2.0.0
+lightgbm==4.1.0
+
+# MLflow
+mlflow==2.8.0
+boto3==1.28.0
+
+# Agents & LLM
+openai==1.3.0
+langchain==0.1.0
+langchain-openai==0.0.2
+
+# API & UI
+fastapi==0.104.0
+uvicorn==0.24.0
+streamlit==1.28.0
+pydantic==2.4.0
+
+# Monitoring & Observability
+shap==0.43.0
+evidently==0.4.10
+
+# Utils
+python-dotenv==1.0.0
+requests==2.31.0
