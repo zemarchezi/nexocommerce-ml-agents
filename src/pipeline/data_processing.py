@@ -67,11 +67,29 @@ class DataProcessor:
             df["price_competitiveness"] = 1.0
         
         # 6. Product Age Category
-        df["age_category"] = pd.cut(
-            df["days_since_launch"],
-            bins=[0, 30, 90, 180, 365, 999999],
-            labels=["new", "recent", "established", "mature", "old"]
-        )
+        if len(df) > 3:
+            df["age_category"] = pd.qcut(
+                df["days_since_launch"],
+                q=3,
+                labels=["new", "established", "mature"],
+                duplicates='drop'
+            )
+        else:
+            # For single predictions, use fixed day ranges
+            days = df["days_since_launch"].iloc[0] if len(df) == 1 else df["days_since_launch"]
+            if isinstance(days, (int, float)):
+                if days < 90:
+                    df["age_category"] = "new"
+                elif days < 365:
+                    df["age_category"] = "established"
+                else:
+                    df["age_category"] = "mature"
+            else:
+                df["age_category"] = pd.cut(
+                    df["days_since_launch"],
+                    bins=[0, 90, 365, float('inf')],
+                    labels=["new", "established", "mature"]
+                )
         
         # 7. Performance Score (composite metric)
         df["performance_score"] = (
@@ -102,12 +120,31 @@ class DataProcessor:
         df["rating_quality"] = df["rating"] * np.log1p(df["num_reviews"])
         
         # 12. Price Tier
-        df["price_tier"] = pd.qcut(
-            df["price"],
-            q=4,
-            labels=["budget", "mid", "premium", "luxury"],
-            duplicates="drop"
-        )
+        if len(df) > 4:
+            df["price_tier"] = pd.qcut(
+                df["price"], 
+                q=4, 
+                labels=["budget", "mid", "premium", "luxury"],
+                duplicates='drop'
+            )
+        else:
+            # For single predictions, use fixed price ranges
+            price = df["price"].iloc[0] if len(df) == 1 else df["price"]
+            if isinstance(price, (int, float)):
+                if price < 50:
+                    df["price_tier"] = "budget"
+                elif price < 100:
+                    df["price_tier"] = "mid"
+                elif price < 200:
+                    df["price_tier"] = "premium"
+                else:
+                    df["price_tier"] = "luxury"
+            else:
+                df["price_tier"] = pd.cut(
+                    df["price"],
+                    bins=[0, 50, 100, 200, float('inf')],
+                    labels=["budget", "mid", "premium", "luxury"]
+                )
         
         logger.info(f"Created {len(df.columns)} total features")
         
@@ -195,17 +232,26 @@ class DataProcessor:
             if col in df.columns:
                 if is_training:
                     self.label_encoders[col] = LabelEncoder()
-                    df[f"{col}_encoded"] = self.label_encoders[col].fit_transform(
-                        df[col].astype(str)
-                    )
+                    df[f"{col}_encoded"] = self.label_encoders[col].fit_transform(df[col].astype(str))
                 else:
                     if col in self.label_encoders:
-                        # Handle unseen categories
-                        df[f"{col}_encoded"] = df[col].astype(str).apply(
-                            lambda x: self.label_encoders[col].transform([x])[0]
-                            if x in self.label_encoders[col].classes_
-                            else -1
-                        )
+                        # Handle unseen categories safely
+                        encoded_values = []
+                        for val in df[col].astype(str):
+                            if val in self.label_encoders[col].classes_:
+                                encoded_values.append(self.label_encoders[col].transform([val])[0])
+                            else:
+                                # Use the first class as default for unseen categories
+                                encoded_values.append(0)
+                        df[f"{col}_encoded"] = encoded_values
+                    else:
+                        # If encoder doesn't exist, create default encoding
+                        logger.warning(f"No encoder found for {col}, using default encoding")
+                        df[f"{col}_encoded"] = 0
+            else:
+                # If column doesn't exist, create it with default value
+                logger.warning(f"Column {col} not found, creating with default encoding")
+                df[f"{col}_encoded"] = 0
         
         # Numerical features
         numerical_features = [

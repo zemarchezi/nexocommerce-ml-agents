@@ -1,0 +1,15 @@
+artifact_uri: /Users/jose/interviews_projects/nexocommerce-ml-agents/mlruns/296470078184094285/d70cd54db81346619abaded26aa1386e/artifacts
+end_time: 1765635244292
+entry_point_name: ''
+experiment_id: '296470078184094285'
+lifecycle_stage: active
+run_id: d70cd54db81346619abaded26aa1386e
+run_name: random_forest_20251213_111400
+run_uuid: d70cd54db81346619abaded26aa1386e
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1765635240960
+status: 3
+tags: []
+user_id: jose

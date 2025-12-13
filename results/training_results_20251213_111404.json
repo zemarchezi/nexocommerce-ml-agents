@@ -1,0 +1,49 @@
+{
+  "status": "SUCCESS",
+  "pipeline_version": "1.0.0",
+  "start_time": "2025-12-13T11:14:00.875423",
+  "end_time": "2025-12-13T11:14:04.354897",
+  "total_time_seconds": 3.479474,
+  "data_source": "synthetic",
+  "model_type": "random_forest",
+  "hyperparameter_tuning": false,
+  "data_splits": {
+    "train": 699,
+    "validation": 100,
+    "test": 201,
+    "total": 1000
+  },
+  "features": {
+    "count": 22,
+    "names": [
+      "price",
+      "stock_quantity",
+      "sales_last_30d",
+      "views_last_30d",
+      "rating",
+      "num_reviews",
+      "days_since_launch",
+      "discount_percentage",
+      "return_rate",
+      "conversion_rate",
+      "stock_coverage_days",
+      "revenue_last_30d",
+      "review_engagement_rate",
+      "price_competitiveness",
+      "performance_score",
+      "sales_velocity",
+      "discount_impact",
+      "rating_quality",
+      "category_encoded",
+      "age_category_encoded",
+      "stock_status_encoded",
+      "price_tier_encoded"
+    ]
+  },
+  "test_metrics": {
+    "accuracy": 0.9353233830845771,
+    "precision": 0.9028071424085742,
+    "recall": 0.9353233830845771,
+    "f1": 0.9187722589239594,
+    "classification_report": "              precision    recall  f1-score   support\n\nDESCONTINUAR       0.00      0.00      0.00         7\n      MANTER       0.94      0.97      0.96       150\n    PROMOVER       0.91      0.95      0.93        44\n\n    accuracy                           0.94       201\n   macro avg       0.62      0.64      0.63       201\nweighted avg       0.90      0.94      0.92       201\n",
+    "confusion_matrix": 

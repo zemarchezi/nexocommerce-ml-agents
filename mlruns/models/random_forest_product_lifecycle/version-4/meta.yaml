@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1765635323759
+current_stage: None
+description: null
+last_updated_timestamp: 1765635323759
+name: random_forest_product_lifecycle
+run_id: 4603f9d6da0640de969af01eb2a4f2f0
+run_link: null
+source: /Users/jose/interviews_projects/nexocommerce-ml-agents/mlruns/296470078184094285/4603f9d6da0640de969af01eb2a4f2f0/artifacts/model
+status: READY
+status_message: null
+storage_location: /Users/jose/interviews_projects/nexocommerce-ml-agents/mlruns/296470078184094285/4603f9d6da0640de969af01eb2a4f2f0/artifacts/model
+user_id: null
+version: 4

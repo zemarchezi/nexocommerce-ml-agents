@@ -1,0 +1,44 @@
+{
+  "feature_importance": [
+    {
+      "feature": "performance_score",
+      "importance": 0.3047573588485558
+    },
+    {
+      "feature": "conversion_rate",
+      "importance": 0.27578518638404237
+    },
+    {
+      "feature": "views_last_30d",
+      "importance": 0.1337362447900363
+    },
+    {
+      "feature": "sales_last_30d",
+      "importance": 0.05795612068119155
+    },
+    {
+      "feature": "rating",
+      "importance": 0.029699193888252377
+    },
+    {
+      "feature": "rating_quality",
+      "importance": 0.029614967182500514
+    },
+    {
+      "feature": "stock_coverage_days",
+      "importance": 0.021640779582119036
+    },
+    {
+      "feature": "return_rate",
+      "importance": 0.021305073846717048
+    },
+    {
+      "feature": "discount_impact",
+      "importance": 0.019782386958888454
+    },
+    {
+      "feature": "review_engagement_rate",
+      "importance": 0.01850917014024934
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "DESCONTINUAR": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 4.0
+  },
+  "MANTER": {
+    "precision": 0.9367088607594937,
+    "recall": 0.9866666666666667,
+    "f1-score": 0.961038961038961,
+    "support": 75.0
+  },
+  "PROMOVER": {
+    "precision": 0.9523809523809523,
+    "recall": 0.9523809523809523,
+    "f1-score": 0.9523809523809523,
+    "support": 21.0
+  },
+  "accuracy": 0.94,
+  "macro avg": {
+    "precision": 0.6296966043801486,
+    "recall": 0.6463492063492063,
+    "f1-score": 0.6378066378066377,
+    "support": 100.0
+  },
+  "weighted avg": {
+    "precision": 0.9025316455696202,
+    "recall": 0.94,
+    "f1-score": 0.9207792207792208,
+    "support": 100.0
+  }
+}

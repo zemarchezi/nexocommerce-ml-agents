@@ -1,0 +1,26 @@
+{
+  "features": [
+    "price",
+    "stock_quantity",
+    "sales_last_30d",
+    "views_last_30d",
+    "rating",
+    "num_reviews",
+    "days_since_launch",
+    "discount_percentage",
+    "return_rate",
+    "conversion_rate",
+    "stock_coverage_days",
+    "revenue_last_30d",
+    "review_engagement_rate",
+    "price_competitiveness",
+    "performance_score",
+    "sales_velocity",
+    "discount_impact",
+    "rating_quality",
+    "category_encoded",
+    "age_category_encoded",
+    "stock_status_encoded",
+    "price_tier_encoded"
+  ]
+}
