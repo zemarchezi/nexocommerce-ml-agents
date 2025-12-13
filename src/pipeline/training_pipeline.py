@@ -22,6 +22,16 @@ from pipeline.data_loader import DataLoader
 from pipeline.data_processing import DataProcessor
 from models.product_model import ProductLifecycleModel
 
+def convert_to_serializable(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.integer, np.floating)):
+        return float(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_to_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_to_serializable(item) for item in obj]
+    return obj
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -308,8 +318,12 @@ class TrainingPipeline:
 
             # Log validation metrics
             for metric_name, metric_value in val_metrics.items():
-                mlflow.log_metric(f"val_{metric_name}", metric_value)
-                logger.info(f"Validation {metric_name}: {metric_value:.4f}")
+                # Only log numeric metrics
+                if isinstance(metric_value, (int, float)):
+                    mlflow.log_metric(f"val_{metric_name}", metric_value)
+                elif isinstance(metric_value, str):
+                    # Log text reports as artifacts
+                    mlflow.log_text(metric_value, f"val_{metric_name}.txt")
 
             # Generate predictions for detailed analysis
             y_val_pred = self.model.model.predict(X_val)
@@ -342,9 +356,11 @@ class TrainingPipeline:
             # Feature importance
             feature_importance = self.model.get_feature_importance()
             logger.info("\nTop 10 Most Important Features:")
-            for feat, importance in feature_importance[:10]:
+            for idx, row in feature_importance.iterrows():
+                feat = row['feature']
+                importance = row['importance']
                 logger.info(f"  {feat}: {importance:.4f}")
-                mlflow.log_metric(f"feature_importance_{feat}", importance)
+                mlflow.log_metric(f"feature_importance_{feat}", float(importance))
 
             # Log model
             mlflow.sklearn.log_model(
@@ -436,7 +452,7 @@ class TrainingPipeline:
         # Save feature importance
         with open(artifacts_dir / "feature_importance.json", "w") as f:
             json.dump(
-                {"feature_importance": [{"feature": f, "importance": float(i)} for f, i in feature_importance]},
+                {"feature_importance": feature_importance.to_dict('records')},
                 f,
                 indent=2
             )
@@ -491,7 +507,10 @@ class TrainingPipeline:
         logger.info("="*80)
         logger.info(f"\nTest Metrics:")
         for metric_name, metric_value in test_metrics.items():
-            logger.info(f"  {metric_name}: {metric_value:.4f}")
+            if isinstance(metric_value, (int, float)):
+                logger.info(f"  {metric_name}: {metric_value:.4f}")
+            else:
+                logger.info(f"  {metric_name}:\n{metric_value}")
 
         logger.info(f"\nClassification Report (Test):")
         logger.info(class_report)
@@ -501,6 +520,22 @@ class TrainingPipeline:
         logger.info(f"\nConfusion Matrix (Test):\n{cm}")
 
         return test_metrics
+
+    def save_processor(self, processor_path: str):
+        """Save the data processor"""
+        import pickle
+        os.makedirs(os.path.dirname(processor_path), exist_ok=True)
+        
+        processor_data = {
+            'scaler': self.data_processor.scaler,
+            'label_encoders': self.data_processor.label_encoders,
+            'feature_names': self.data_processor.feature_names
+        }
+        
+        with open(processor_path, 'wb') as f:
+            pickle.dump(processor_data, f)
+        
+        logger.info(f"Processor saved to {processor_path}")
 
     def save_model(self, model_path: str = "models/product_lifecycle_model.pkl"):
         """
@@ -586,8 +621,14 @@ class TrainingPipeline:
             test_metrics = self.evaluate_test_set(test_df, features)
 
             # 5. Save model
-            logger.info("\n[5/5] Saving model...")
-            self.save_model(save_model_path)
+            if save_model_path:
+                logger.info(f"\n[5/5] Saving model to {save_model_path}...")
+                self.model.save_model(save_model_path)
+
+                # Save the data processor as well
+                processor_path = save_model_path.replace('.pkl', '_processor.pkl')
+                self.save_processor(processor_path)
+                logger.info(f"Model and processor saved successfully")
 
             # Calculate total time
             end_time = datetime.now()
@@ -729,7 +770,8 @@ def main():
 
     results_file = results_path / f"training_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     with open(results_file, "w") as f:
-        json.dump(results, f, indent=2)
+        serializable_results = convert_to_serializable(results)
+        json.dump(serializable_results, f, indent=2)
 
     logger.info(f"\nResults saved to: {results_file}")
 #%%

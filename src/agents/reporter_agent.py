@@ -1,11 +1,12 @@
 #%%
+
+
 from typing import Dict, List, Any
 from datetime import datetime
 import logging
 import time
 import json
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +40,7 @@ class ReporterAgent:
         
         Args:
             analyst_results: Results from Analyst Agent
-            strategist_results: Results from Strategist Agent
+            strategist_results: Results from Strategist Agent (with keys: strategic_priorities, action_plans, risk_mitigation, expected_impact, timeline, resource_allocation)
             
         Returns:
             Dictionary with complete report
@@ -60,9 +61,7 @@ class ReporterAgent:
             )
             
             # Generate recommendations section
-            recommendations_section = self._format_recommendations(
-                strategist_results["recommendations"]
-            )
+            recommendations_section = self._format_recommendations(strategist_results)
             
             # Generate action items
             action_items = self._generate_action_items(strategist_results)
@@ -96,25 +95,21 @@ class ReporterAgent:
                 "audit_trail": audit_trail,
                 "observability": {
                     "analyst_agent": {
-                        "execution_time": analyst_results["execution_time"],
-                        "products_analyzed": analyst_results["products_analyzed"],
-                        "timestamp": analyst_results["timestamp"]
+                        "execution_time": analyst_results.get("execution_time", 0),
+                        "products_analyzed": analyst_results.get("products_analyzed", 0),
+                        "timestamp": analyst_results.get("timestamp", datetime.now().isoformat())
                     },
                     "strategist_agent": {
-                        "execution_time": strategist_results["execution_time"],
-                        "recommendations_generated": len(strategist_results["recommendations"]),
-                        "timestamp": strategist_results["timestamp"]
+                        "execution_time": 0,  # Strategist doesn't track this yet
+                        "recommendations_generated": len(strategist_results.get("strategic_priorities", [])),
+                        "timestamp": datetime.now().isoformat()
                     },
                     "reporter_agent": {
                         "execution_time": execution_time,
                         "report_sections": 6,
                         "timestamp": datetime.now().isoformat()
                     },
-                    "total_processing_time": (
-                        analyst_results["execution_time"] +
-                        strategist_results["execution_time"] +
-                        execution_time
-                    )
+                    "total_processing_time": analyst_results.get("execution_time", 0) + execution_time
                 },
                 "agent_metrics": self.get_metrics()
             }
@@ -134,8 +129,8 @@ class ReporterAgent:
     ) -> Dict[str, Any]:
         """Generate executive summary"""
         
-        stats = analyst_results["statistics"]
-        predictions_dist = stats["predictions_distribution"]
+        stats = analyst_results.get("statistics", {})
+        predictions_dist = stats.get("predictions_distribution", {})
         
         # Key findings
         key_findings = []
@@ -155,34 +150,44 @@ class ReporterAgent:
                 f"{predictions_dist['MANTER']} produtos com desempenho estável"
             )
         
-        # Priority actions count
+        # Priority actions count from strategic_priorities
+        strategic_priorities = strategist_results.get("strategic_priorities", [])
         priority_actions = len([
-            r for r in strategist_results["recommendations"]
-            if r.get("priority") in ["URGENTE", "ALTA"]
+            p for p in strategic_priorities
+            if p.get("priority") in ["HIGH", "ALTA", "URGENTE"]
         ])
         
+        confidence_mean = stats.get("confidence_metrics", {}).get("mean", 0)
         key_findings.append(
-            f"Confiança média das predições: {stats['confidence_metrics']['mean']*100:.2f}%"
+            f"Confiança média das predições: {confidence_mean*100:.2f}%"
         )
+        
+        # Get expected impact
+        expected_impact = strategist_results.get("expected_impact", {})
+        revenue_impact = expected_impact.get("total_estimated_impact", 0)
         
         return {
             "title": "Análise de Ciclo de Vida de Produtos - NexoCommerce",
             "period": "Últimos 30 dias",
-            "total_products_analyzed": stats["total_products"],
+            "total_products_analyzed": stats.get("total_products", 0),
             "analysis_date": datetime.now().strftime("%d/%m/%Y"),
             "key_findings": key_findings,
             "priority_actions": priority_actions,
             "overall_health": self._calculate_portfolio_health(predictions_dist),
-            "estimated_revenue_impact": strategist_results["impact_analysis"].get(
-                "potential_revenue_increase", "N/A"
-            ),
-            "confidence_level": f"{stats['confidence_metrics']['mean']*100:.1f}%",
+            "estimated_revenue_impact": f"R$ {revenue_impact:,.2f}",
+            "confidence_level": f"{confidence_mean*100:.1f}%",
             "next_steps": "Revisar recomendações prioritárias e implementar plano de ação"
         }
     
     def _calculate_portfolio_health(self, predictions_dist: Dict) -> str:
         """Calculate overall portfolio health"""
+        if not predictions_dist:
+            return "🟡 MODERADO - Dados insuficientes"
+            
         total = sum(predictions_dist.values())
+        if total == 0:
+            return "🟡 MODERADO - Dados insuficientes"
+            
         promote_pct = predictions_dist.get("PROMOVER", 0) / total * 100
         discontinue_pct = predictions_dist.get("DESCONTINUAR", 0) / total * 100
         
@@ -202,103 +207,72 @@ class ReporterAgent:
     ) -> Dict[str, Any]:
         """Generate detailed findings section"""
         
-        insights = analyst_results["insights"]
-        stats = analyst_results["statistics"]
+        insights = analyst_results.get("insights", [])
+        stats = analyst_results.get("statistics", {})
         
         findings = {
             "data_quality": {
                 "status": "✅ Dados validados",
-                "products_analyzed": stats["total_products"],
-                "confidence_metrics": stats["confidence_metrics"],
+                "products_analyzed": stats.get("total_products", 0),
+                "confidence_metrics": stats.get("confidence_metrics", {}),
                 "data_completeness": "100%"
             },
             "performance_analysis": {
-                "total_revenue_last_30d": stats["business_metrics"]["total_revenue_last_30d"],
-                "total_sales": stats["business_metrics"]["total_sales_last_30d"],
-                "average_rating": stats["business_metrics"]["average_rating"],
-                "products_out_of_stock": stats["business_metrics"]["products_out_of_stock"]
+                "total_revenue_last_30d": stats.get("business_metrics", {}).get("total_revenue_last_30d", 0),
+                "total_sales": stats.get("business_metrics", {}).get("total_sales_last_30d", 0),
+                "average_rating": stats.get("business_metrics", {}).get("average_rating", 0),
+                "products_out_of_stock": stats.get("business_metrics", {}).get("products_out_of_stock", 0)
             },
-            "category_breakdown": stats["category_breakdown"],
+            "category_breakdown": stats.get("category_breakdown", {}),
             "key_insights": [
                 {
-                    "type": insight["type"],
-                    "title": insight["title"],
-                    "description": insight["description"],
+                    "type": insight.get("type", "N/A"),
+                    "title": insight.get("title", "N/A"),
+                    "description": insight.get("description", "N/A"),
                     "impact": insight.get("expected_impact", "N/A")
                 }
                 for insight in insights
             ],
-            "risk_assessment": self._assess_risks(analyst_results, strategist_results)
+            "risk_assessment": strategist_results.get("risk_mitigation", [])
         }
         
         return findings
     
-    def _assess_risks(self, analyst_results: Dict, strategist_results: Dict) -> List[Dict]:
-        """Assess business risks"""
-        risks = []
-        
-        stats = analyst_results["statistics"]
-        
-        # Stock risk
-        out_of_stock = stats["business_metrics"]["products_out_of_stock"]
-        if out_of_stock > 0:
-            risks.append({
-                "type": "ESTOQUE",
-                "level": "MÉDIO" if out_of_stock < 10 else "ALTO",
-                "description": f"{out_of_stock} produtos sem estoque",
-                "mitigation": "Reabastecer produtos de alta demanda"
-            })
-        
-        # Low confidence predictions
-        low_confidence = stats["confidence_metrics"]["mean"]
-        if low_confidence < 0.7:
-            risks.append({
-                "type": "CONFIANÇA",
-                "level": "MÉDIO",
-                "description": f"Confiança média das predições: {low_confidence*100:.1f}%",
-                "mitigation": "Coletar mais dados e retreinar modelo"
-            })
-        
-        # High discontinuation rate
-        predictions_dist = stats["predictions_distribution"]
-        total = sum(predictions_dist.values())
-        discontinue_pct = predictions_dist.get("DESCONTINUAR", 0) / total * 100
-        
-        if discontinue_pct > 25:
-            risks.append({
-                "type": "PORTFÓLIO",
-                "level": "ALTO",
-                "description": f"{discontinue_pct:.1f}% dos produtos recomendados para descontinuação",
-                "mitigation": "Revisar estratégia de sourcing e qualidade de produtos"
-            })
-        
-        if not risks:
-            risks.append({
-                "type": "GERAL",
-                "level": "BAIXO",
-                "description": "Nenhum risco crítico identificado",
-                "mitigation": "Manter monitoramento contínuo"
-            })
-        
-        return risks
-    
-    def _format_recommendations(self, recommendations: List[Dict]) -> List[Dict]:
+    def _format_recommendations(self, strategist_results: Dict) -> List[Dict]:
         """Format recommendations for report"""
         
         formatted = []
         
-        for rec in recommendations:
+        # From strategic priorities
+        priorities = strategist_results.get("strategic_priorities", [])
+        for priority in priorities:
             formatted.append({
-                "action": rec["action"],
-                "priority": rec.get("priority", "MÉDIA"),
-                "products_affected": rec.get("count", 0),
-                "reason": rec["reason"],
-                "expected_impact": rec.get("expected_impact", "N/A"),
-                "confidence": f"{rec.get('confidence_level', 0)*100:.1f}%",
-                "suggested_actions": rec.get("suggested_actions", []),
-                "kpis": rec.get("kpis_to_monitor", []),
-                "investment_required": rec.get("estimated_investment", {}),
-                "timeline": rec.get("deadline", "2-4 semanas")
+                "action": priority.get("action", "N/A"),
+                "priority": priority.get("priority", "MÉDIA"),
+                "products_affected": priority.get("affected_products", 0),
+                "reason": priority.get("rationale", "N/A"),
+                "expected_impact": priority.get("category", "N/A"),
+                "confidence": "N/A",
+                "suggested_actions": [],
+                "kpis": [],
+                "investment_required": {},
+                "timeline": "2-4 semanas"
+            })
+        
+        # From action plans
+        action_plans = strategist_results.get("action_plans", [])
+        for plan in action_plans:
+            formatted.append({
+                "action": plan.get("action", "N/A"),
+                "priority": "MÉDIA",
+                "products_affected": plan.get("products_count", 0),
+                "reason": f"Plano de ação para {plan.get('action', 'N/A')}",
+                "expected_impact": f"Duração estimada: {plan.get('estimated_duration', 'N/A')}",
+                "confidence": "N/A",
+                "suggested_actions": plan.get("steps", []),
+                "kpis": [],
+                "investment_required": {},
+                "timeline": plan.get("estimated_duration", "N/A")
             })
         
         return formatted
@@ -308,15 +282,16 @@ class ReporterAgent:
         
         action_items = []
         
-        # From priority actions
-        for priority_action in strategist_results["priority_actions"]:
+        # From strategic priorities
+        priorities = strategist_results.get("strategic_priorities", [])
+        for idx, priority in enumerate(priorities):
             action_items.append({
-                "id": f"ACT_{len(action_items)+1:03d}",
-                "priority": priority_action["priority"],
-                "action": priority_action["action"],
-                "description": priority_action["expected_impact"],
+                "id": f"ACT_{idx+1:03d}",
+                "priority": priority.get("priority", "MÉDIA"),
+                "action": priority.get("action", "N/A"),
+                "description": priority.get("rationale", "N/A"),
                 "owner": "Equipe de E-commerce",
-                "deadline": self._calculate_deadline(priority_action["priority"]),
+                "deadline": self._calculate_deadline(priority.get("priority", "MÉDIA")),
                 "status": "PENDENTE",
                 "dependencies": []
             })
@@ -338,9 +313,12 @@ class ReporterAgent:
     def _calculate_deadline(self, priority: str) -> str:
         """Calculate deadline based on priority"""
         deadlines = {
-            "URGENTE": "24-48 horas",
+            "HIGH": "1 semana",
             "ALTA": "1 semana",
+            "URGENTE": "24-48 horas",
+            "MEDIUM": "2 semanas",
             "MÉDIA": "2 semanas",
+            "LOW": "1 mês",
             "BAIXA": "1 mês"
         }
         return deadlines.get(priority, "2 semanas")
@@ -348,43 +326,39 @@ class ReporterAgent:
     def _generate_metrics_dashboard(self, analyst_results: Dict) -> Dict[str, Any]:
         """Generate metrics dashboard"""
         
-        stats = analyst_results["statistics"]
+        stats = analyst_results.get("statistics", {})
         
         return {
             "business_metrics": {
                 "revenue": {
-                    "value": stats["business_metrics"]["total_revenue_last_30d"],
+                    "value": stats.get("business_metrics", {}).get("total_revenue_last_30d", 0),
                     "label": "Receita (30 dias)",
                     "format": "currency"
                 },
                 "sales": {
-                    "value": stats["business_metrics"]["total_sales_last_30d"],
+                    "value": stats.get("business_metrics", {}).get("total_sales_last_30d", 0),
                     "label": "Vendas Totais",
                     "format": "number"
                 },
                 "avg_rating": {
-                    "value": stats["business_metrics"]["average_rating"],
+                    "value": stats.get("business_metrics", {}).get("average_rating", 0),
                     "label": "Rating Médio",
                     "format": "decimal"
                 },
                 "stock_value": {
-                    "value": stats["business_metrics"]["total_stock_value"],
+                    "value": stats.get("business_metrics", {}).get("total_stock_value", 0),
                     "label": "Valor em Estoque",
                     "format": "currency"
                 }
             },
             "ml_metrics": {
-                "confidence": {
-                    "mean": stats["confidence_metrics"]["mean"],
-                    "median": stats["confidence_metrics"]["median"],
-                    "std": stats["confidence_metrics"]["std"]
-                },
-                "predictions": stats["predictions_distribution"]
+                "confidence": stats.get("confidence_metrics", {}),
+                "predictions": stats.get("predictions_distribution", {})
             },
             "operational_metrics": {
-                "products_analyzed": stats["total_products"],
-                "categories": len(stats["category_breakdown"]),
-                "out_of_stock": stats["business_metrics"]["products_out_of_stock"]
+                "products_analyzed": stats.get("total_products", 0),
+                "categories": len(stats.get("category_breakdown", {})),
+                "out_of_stock": stats.get("business_metrics", {}).get("products_out_of_stock", 0)
             }
         }
     
@@ -401,16 +375,16 @@ class ReporterAgent:
                     "step": 1,
                     "agent": "Analyst Agent",
                     "action": "Data analysis and ML predictions",
-                    "timestamp": analyst_results["timestamp"],
-                    "duration": f"{analyst_results['execution_time']:.2f}s",
+                    "timestamp": analyst_results.get("timestamp", datetime.now().isoformat()),
+                    "duration": f"{analyst_results.get('execution_time', 0):.2f}s",
                     "status": "✅ COMPLETED"
                 },
                 {
                     "step": 2,
                     "agent": "Strategist Agent",
                     "action": "Strategy generation and recommendations",
-                    "timestamp": strategist_results["timestamp"],
-                    "duration": f"{strategist_results['execution_time']:.2f}s",
+                    "timestamp": datetime.now().isoformat(),
+                    "duration": "N/A",
                     "status": "✅ COMPLETED"
                 },
                 {
@@ -424,7 +398,7 @@ class ReporterAgent:
             ],
             "data_sources": {
                 "primary": "Product database",
-                "features_used": analyst_results.get("agent_metrics", {}).get("total_products_analyzed", 0),
+                "features_used": analyst_results.get("products_analyzed", 0),
                 "data_quality": "Validated"
             },
             "model_info": {
@@ -511,7 +485,6 @@ class ReporterAgent:
     
     def _export_html(self, report: Dict) -> str:
         """Export report as HTML"""
-        # Simplified HTML export
         html = f"""
         <html>
         <head>

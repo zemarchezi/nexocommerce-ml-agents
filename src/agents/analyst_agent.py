@@ -9,6 +9,17 @@ import time
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def sanitize_for_json(obj):
+    """Convert NaN and Inf values to None for JSON serialization"""
+    if isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_for_json(item) for item in obj]
+    elif isinstance(obj, float):
+        if np.isnan(obj) or np.isinf(obj):
+            return None
+        return obj
+    return obj
 
 class AnalystAgent:
     """
@@ -97,6 +108,7 @@ class AnalystAgent:
                 "execution_time": execution_time,
                 "agent_metrics": self.get_metrics()
             }
+            response = sanitize_for_json(response)
             
             logger.info(f"{self.name}: Analysis completed in {execution_time:.2f}s")
             

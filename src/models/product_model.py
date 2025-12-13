@@ -1,4 +1,5 @@
 #%%
+import os
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
@@ -13,6 +14,7 @@ from typing import Dict, Tuple, Optional, Any
 import logging
 import joblib
 from pathlib import Path
+import pickle
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,6 +35,7 @@ class ProductLifecycleModel:
         self.feature_names = None
         self.feature_importance = None
         self.classes = ["DESCONTINUAR", "MANTER", "PROMOVER"]
+        self.is_trained = False  # Add this line
         
         # Initialize model
         if model_type == "random_forest":
@@ -53,6 +56,8 @@ class ProductLifecycleModel:
             )
         else:
             raise ValueError(f"Unknown model_type: {model_type}")
+        
+        
     
     def train(
         self,
@@ -140,7 +145,7 @@ class ProductLifecycleModel:
             )
             
             mlflow.end_run()
-        
+        self.is_trained = True
         logger.info(f"Training completed. Test Accuracy: {metrics['test_accuracy']:.4f}")
         
         return metrics
@@ -253,32 +258,52 @@ class ProductLifecycleModel:
         
         return self.feature_importance.head(top_n)
     
-    def save_model(self, filepath: str):
-        """Save model to disk"""
-        Path(filepath).parent.mkdir(parents=True, exist_ok=True)
-        
+    def save_model(self, model_path: str):
+        """
+        Save model to file
+
+        Args:
+            model_path: Path to save model
+        """
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+
+        # Save model and metadata
         model_data = {
-            "model": self.model,
-            "feature_names": self.feature_names,
-            "feature_importance": self.feature_importance,
-            "model_type": self.model_type,
-            "classes": self.classes
+            'model': self.model,
+            'feature_names': self.feature_names,
+            'feature_importance': self.feature_importance,
+            'model_type': self.model_type
         }
-        
-        joblib.dump(model_data, filepath)
-        logger.info(f"Model saved to {filepath}")
+
+        with open(model_path, 'wb') as f:
+            pickle.dump(model_data, f)
+
+        logger.info(f"Model saved to {model_path}")
     
-    def load_model(self, filepath: str):
-        """Load model from disk"""
-        model_data = joblib.load(filepath)
+    def load_model(self, model_path: str):
+        """
+        Load model from file
         
-        self.model = model_data["model"]
-        self.feature_names = model_data["feature_names"]
-        self.feature_importance = model_data["feature_importance"]
-        self.model_type = model_data["model_type"]
-        self.classes = model_data["classes"]
+        Args:
+            model_path: Path to saved model
+        """
+        logger.info(f"Loading model from {model_path}")
         
-        logger.info(f"Model loaded from {filepath}")
+        with open(model_path, 'rb') as f:
+            saved_data = pickle.load(f)
+        
+        self.model = saved_data['model']
+        self.feature_names = saved_data['feature_names']
+        self.feature_importance = saved_data.get('feature_importance')
+        self.model_type = saved_data.get('model_type', 'random_forest')
+        
+        # THIS LINE IS CRITICAL - ADD IT IF MISSING
+        self.is_trained = True
+        
+        logger.info(f"Model loaded successfully")
+        logger.info(f"Model type: {self.model_type}")
+        logger.info(f"Number of features: {len(self.feature_names)}")
     
     def evaluate(self, X: pd.DataFrame, y: pd.Series) -> Dict[str, Any]:
         """
