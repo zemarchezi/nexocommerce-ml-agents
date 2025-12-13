@@ -244,8 +244,7 @@ with open("report.json", "w") as f:
 ### 3️⃣ API REST
 
 ```bash
-# Iniciar servidor
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+
 
 # Testar endpoint
 curl -X POST "http://localhost:8000/api/v1/predict" \
