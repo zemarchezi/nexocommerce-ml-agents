@@ -318,20 +318,22 @@ class ProductLifecycleModel:
 
 if __name__ == "__main__":
     # Test the model
-    from data_loader import DataLoader
-    from data_processing import DataProcessor
+    import sys
+    sys.path.append("/Users/jose/interviews_projects/nexocommerce-ml-agents/")
+    from src.pipeline.data_loader import DataLoader
+    from src.pipeline.data_processing import DataProcessor
     
     # Load and process data
     loader = DataLoader()
     df = loader.load_data(source="synthetic", n_samples=1000)
-    
+    #%%
     processor = DataProcessor()
     processed_df, features = processor.process_pipeline(df, is_training=True)
     
     # Prepare data
     X = processed_df[features]
     y = processed_df["lifecycle_action"]
-    
+    #%%
     # Train model
     model = ProductLifecycleModel(model_type="random_forest")
     metrics = model.train(X, y, log_mlflow=False)
@@ -348,3 +350,4 @@ if __name__ == "__main__":
     predictions = model.predict_with_confidence(sample)
     print("\nSample Predictions:")
     print(predictions)
+# %%
