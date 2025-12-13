@@ -459,7 +459,6 @@ async def export_report(
         detail="Report export not implemented. Implement based on your storage solution."
     )
 
-
 @app.get("/model/info")
 async def model_info():
     """Get information about the loaded model"""
@@ -467,22 +466,51 @@ async def model_info():
         raise HTTPException(status_code=503, detail="Model not loaded")
 
     try:
-        feature_importance = model.get_feature_importance()[:10] if model.is_trained else []
+        # Get feature importance safely
+        feature_importance = []
+        if model.is_trained:
+            try:
+                raw_importance = model.get_feature_importance()
+                
+                # Handle different return formats
+                if isinstance(raw_importance, dict):
+                    # If it's a dictionary: {feature: importance}
+                    feature_importance = [
+                        {"feature": str(feat), "importance": float(imp)}
+                        for feat, imp in list(raw_importance.items())[:10]
+                    ]
+                elif isinstance(raw_importance, list):
+                    # If it's a list of tuples/lists
+                    feature_importance = []
+                    for item in raw_importance[:10]:
+                        if isinstance(item, (list, tuple)) and len(item) >= 2:
+                            feature_importance.append({
+                                "feature": str(item[0]),
+                                "importance": float(item[1])
+                            })
+                        elif isinstance(item, dict):
+                            feature_importance.append({
+                                "feature": str(item.get("feature", "unknown")),
+                                "importance": float(item.get("importance", 0.0))
+                            })
+                else:
+                    logger.warning(f"Unexpected feature_importance format: {type(raw_importance)}")
+                    feature_importance = []
+            except Exception as e:
+                logger.error(f"Error getting feature importance: {e}")
+                feature_importance = []
 
         return {
             "model_type": model.model_type,
             "is_trained": model.is_trained,
             "feature_count": len(model.feature_names) if model.feature_names else 0,
-            "top_features": [
-                {"feature": feat, "importance": float(imp)}
-                for feat, imp in feature_importance
-            ],
-            "classes": ["DESCONTINUAR", "MANTER", "PROMOVER"]
+            "top_features": feature_importance,
+            "classes": ["DESCONTINUAR", "MANTER", "PROMOVER"],
+            "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
         logger.error(f"Failed to get model info: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.get("/agents/status")
 async def agents_status():

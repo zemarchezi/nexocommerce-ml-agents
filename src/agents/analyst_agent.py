@@ -271,27 +271,34 @@ class AnalystAgent:
         Returns:
             Dictionary with statistics
         """
+        # Replace NaN and Inf with 0
+        results_df = results_df.replace([np.nan, np.inf, -np.inf], 0)
+        
         stats = {
             "total_products": len(results_df),
             "predictions_distribution": results_df["prediction_label"].value_counts().to_dict(),
             "confidence_metrics": {
-                "mean": float(results_df["confidence"].mean()),
-                "median": float(results_df["confidence"].median()),
-                "min": float(results_df["confidence"].min()),
-                "max": float(results_df["confidence"].max()),
-                "std": float(results_df["confidence"].std())
+                "mean": float(results_df["confidence"].fillna(0).mean()),
+                "median": float(results_df["confidence"].fillna(0).median()),
+                "min": float(results_df["confidence"].fillna(0).min()),
+                "max": float(results_df["confidence"].fillna(0).max()),
+                "std": float(results_df["confidence"].fillna(0).std())
             },
             "business_metrics": {
-                "total_revenue_last_30d": float((results_df["price"] * results_df["sales_last_30d"]).sum()),
-                "average_rating": float(results_df["rating"].mean()),
-                "total_sales_last_30d": int(results_df["sales_last_30d"].sum()),
-                "total_stock_value": float((results_df["price"] * results_df["stock_quantity"]).sum()),
+                "total_revenue_last_30d": float((results_df["price"] * results_df["sales_last_30d"]).fillna(0).sum()),
+                "average_rating": float(results_df["rating"].fillna(0).mean()),
+                "total_sales_last_30d": int(results_df["sales_last_30d"].fillna(0).sum()),
+                "total_stock_value": float((results_df["price"] * results_df["stock_quantity"]).fillna(0).sum()),
                 "products_out_of_stock": int((results_df["stock_quantity"] == 0).sum())
             },
             "category_breakdown": results_df.groupby("category").size().to_dict()
         }
         
+        # Sanitize all values
+        stats = sanitize_for_json(stats)
+        
         return stats
+
     
     def _update_metrics(self, n_products: int, avg_confidence: float, execution_time: float):
         """Update agent metrics"""

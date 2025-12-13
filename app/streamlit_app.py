@@ -1,8 +1,3 @@
-"""
-NexoCommerce Multi-Agent System - Streamlit UI
-Main application entry point
-"""
-
 import streamlit as st
 import sys
 from pathlib import Path
